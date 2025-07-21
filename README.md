@@ -29,7 +29,7 @@ A gas-efficient SOL airdrop program that uses Merkle trees to distribute native 
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/cxalem/sol-distributor.git
 cd solana-distributor
 
 # Install dependencies
