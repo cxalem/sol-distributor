@@ -401,6 +401,22 @@ anchor deploy
 solana config get
 ```
 
+**"Dynamic program error: No default signer found"**
+```bash
+# Create the deploy wallet file specified in Anchor.toml
+solana-keygen new -o deploy-wallet.json
+
+# Fund the deploy wallet with devnet SOL for deployment fees
+solana airdrop 2 $(solana address -k deploy-wallet.json) --url devnet
+
+# Verify wallet is funded
+solana balance -k deploy-wallet.json --url devnet
+
+# Now you can deploy
+anchor deploy
+```
+*This error occurs when the wallet file specified in `Anchor.toml` doesn't exist. The `deploy-wallet.json` file is needed to sign deployment transactions.*
+
 ## 📁 Project Structure
 
 ```
