@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::keccak;
 
-declare_id!("77DUYUGYFjCWq8JvnNJkwGTpzVvRskiRzA3KqtTAGv2V");
+declare_id!("ErbDoJTnJyG6EBXHeFochTsHJhB3Jfjc3MF1L9aNip3y");
 
 #[program]
 pub mod solana_distributor {
@@ -71,6 +71,46 @@ pub mod solana_distributor {
 
         // Step 4: Update state accounting
         airdrop_state.amount_claimed = airdrop_state.amount_claimed.saturating_add(amount);
+
+        Ok(())
+    }
+
+    pub fn update_merkle_root(
+        ctx: Context<UpdateMerkleRoot>,
+        new_merkle_root: [u8; 32],
+        additional_amount: u64,
+    ) -> Result<()> {
+        let airdrop_state = &mut ctx.accounts.airdrop_state;
+        
+        // Only the authority can update the Merkle root
+        require!(
+            ctx.accounts.authority.key() == airdrop_state.authority,
+            ErrorCode::Unauthorized
+        );
+
+        // Update the Merkle root
+        airdrop_state.merkle_root = new_merkle_root;
+        
+        // Add additional SOL to the airdrop if provided
+        if additional_amount > 0 {
+            airdrop_state.airdrop_amount = airdrop_state.airdrop_amount.saturating_add(additional_amount);
+            
+            // Transfer additional SOL from authority to the vault
+            let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+                &ctx.accounts.authority.key(),
+                &airdrop_state.key(),
+                additional_amount,
+            );
+
+            anchor_lang::solana_program::program::invoke(
+                &transfer_ix,
+                &[
+                    ctx.accounts.authority.to_account_info(),
+                    airdrop_state.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+        }
 
         Ok(())
     }
@@ -146,6 +186,21 @@ pub struct Claim<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct UpdateMerkleRoot<'info> {
+    #[account(
+        mut,
+        seeds = [b"merkle_tree"],
+        bump = airdrop_state.bump
+    )]
+    pub airdrop_state: Account<'info, AirdropState>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 pub struct AirdropState {
     /// The Merkle root of the airdrop (32 bytes)
@@ -167,4 +222,6 @@ pub struct ClaimStatus {}
 pub enum ErrorCode {
     #[msg("Invalid Merkle proof")]
     InvalidProof,
+    #[msg("Unauthorized")]
+    Unauthorized,
 }

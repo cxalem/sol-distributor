@@ -1,370 +1,444 @@
-# Solana SOL Merkle Distributor
+# Solana Merkle Distributor
 
-A gas-efficient SOL airdrop program that uses Merkle trees to distribute native SOL tokens on the Solana blockchain. This program allows you to airdrop SOL to thousands of recipients while storing only a 32-byte Merkle root on-chain.
+A complete Solana program for efficient token airdrops using Merkle trees. Distribute SOL to thousands of recipients while storing only a 32-byte Merkle root on-chain.
 
-## 🚀 Program Details
+## 🎯 What This Project Does
 
-- **Program ID**: `77DUYUGYFjCWq8JvnNJkwGTpzVvRskiRzA3KqtTAGv2V`
-- **Network**: Solana Devnet
-- **Framework**: Anchor v0.31.1
-- **Token Type**: Native SOL (no SPL tokens needed)
+This is a **merkle tree-based airdrop system** that allows you to:
 
-## 📋 Features
+1. **Create** a list of recipients and amounts
+2. **Generate** a merkle tree representing all recipients  
+3. **Deploy** a Solana program that stores only the merkle root
+4. **Initialize** the airdrop with funded SOL
+5. **Allow recipients** to claim their SOL using cryptographic proofs
 
-- ✅ **Native SOL Distribution**: Directly distribute SOL to recipient wallets
-- ✅ **Merkle Proof Verification**: Efficient verification using keccak256 hashing
-- ✅ **Double-Claim Prevention**: Receipt system prevents users from claiming twice
-- ✅ **Gas Efficient**: Only stores a 32-byte Merkle root on-chain
-- ✅ **Scalable**: Supports airdrops to thousands of recipients
+**Why Merkle Trees?** Instead of storing thousands of recipient addresses on-chain (expensive), we store just one 32-byte hash that represents the entire list. Recipients prove they're eligible using merkle proofs.
 
-## 🛠 Prerequisites
+## 🏗️ How It Works
 
-- Node.js 16+ 
-- Yarn or npm
-- Anchor CLI v0.31.1
-- Solana CLI v2.2.20+
-- Solana wallet with devnet SOL
+```ascii
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Recipients    │    │   Merkle Tree    │    │  Solana Program │
+│     List        │───▶│   Generation     │───▶│   (Root Only)   │
+│ • Alice: 0.1 SOL│    │                  │    │                 │
+│ • Bob: 0.2 SOL  │    │ Root: 0x1a2b3c...│    │ Root: 0x1a2b3c..│
+│ • Carol: 0.1 SOL│    │                  │    │ SOL: 0.4 Total  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+┌─────────────────┐    ┌──────────────────┐             │
+│   Alice Claims  │    │  Generate Proof  │             │
+│                 │◀───│  for Alice       │◀────────────┘
+│ ✓ Proof Valid   │    │                  │
+│ ✓ Receives SOL  │    │ Proof: [0x4d,    │
+│                 │    │        0x9f, ...] │
+└─────────────────┘    └──────────────────┘
+```
 
-## 📦 Installation
+## 📋 Prerequisites
+
+Before starting, install:
+
+- **Rust 1.88.0+** - `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- **Solana CLI 2.2.20+** - `sh -c "$(curl -sSfL https://release.solana.com/stable/install)"`
+- **Anchor CLI 0.31.1** - `cargo install --git https://github.com/coral-xyz/anchor anchor-cli --tag v0.31.1`
+- **Node.js 16+** with npm
+
+Verify installations:
+```bash
+rustc --version    # Should be 1.88.0+
+solana --version   # Should be 2.2.20+
+anchor --version   # Should be 0.31.1
+node --version     # Should be 16+
+```
+
+## 🚀 Step-by-Step Setup
+
+### Step 1: Clone and Install
 
 ```bash
 # Clone the repository
-git clone https://github.com/cxalem/sol-distributor.git
+git clone <your-repo-url>
 cd solana-distributor
 
 # Install dependencies
-yarn install
+npm install
 
-# Build the program (if needed)
-anchor build
+# Install additional dependencies
+npm install --save-dev @types/node
+npm install bs58
 ```
 
-## 🔧 Setup
-
-### 1. Configure Solana CLI for Devnet
+### Step 2: Configure Solana Environment
 
 ```bash
+# Set network to devnet
 solana config set --url https://api.devnet.solana.com
-solana config set --keypair <your-keypair.json>
+solana config set --commitment confirmed
+
+# Create or use existing wallet
+solana-keygen new --outfile deploy-wallet.json --no-bip39-passphrase
+
+# Fund with devnet SOL (need ~2 SOL for deployment)
+solana airdrop 2 $(solana address -k deploy-wallet.json)
+
+# Check balance
+solana balance
 ```
 
-### 2. Get Devnet SOL
+### Step 3: Create Your Recipients List
 
-```bash
-solana airdrop 2
-```
+Edit `recipients.json` with your airdrop recipients:
 
-## 📖 How to Use
-
-### Creating a SOL Airdrop
-
-#### Step 1: Prepare Your Airdrop Data
-
-Create a list of recipients and their SOL amounts (in lamports):
-
-```javascript
-const recipients = [
-  {
-    address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-    amount: 100000000 // 0.1 SOL in lamports
-  },
-  {
-    address: "4fYNw3dojWmQ4dXtSGE9epjRGy9QRqE5TkSgbGzZXR7Y", 
-    amount: 200000000 // 0.2 SOL in lamports
-  }
-];
-```
-
-#### Step 2: Generate Merkle Tree
-
-```javascript
-import { keccak_256 } from "js-sha3";
-import { PublicKey } from "@solana/web3.js";
-
-class MerkleTree {
-  constructor(recipients) {
-    // Create leaves from recipient data
-    this.leaves = recipients.map(r => this.createLeaf(r.address, r.amount));
-    
-    // Build the tree
-    this.tree = [this.leaves];
-    let currentLevel = this.leaves;
-    
-    while (currentLevel.length > 1) {
-      const nextLevel = [];
-      
-      for (let i = 0; i < currentLevel.length; i += 2) {
-        const left = currentLevel[i];
-        const right = i + 1 < currentLevel.length ? currentLevel[i + 1] : left;
-        const parent = this.hashPair(left, right);
-        nextLevel.push(parent);
-      }
-      
-      this.tree.push(nextLevel);
-      currentLevel = nextLevel;
+```json
+{
+  "airdropId": "my-awesome-airdrop-2024",
+  "description": "Community airdrop for early supporters",
+  "merkleRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "totalAmount": "1000000000",
+  "network": "devnet",
+  "programId": "WILL_BE_UPDATED_AFTER_DEPLOYMENT",
+  "recipients": [
+    {
+      "publicKey": "HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG",
+      "amount": "250000000",
+      "index": 0,
+      "description": "Early supporter #1"
+    },
+    {
+      "publicKey": "H3LgCdztZyfE5zch3YAVXYj5D7bf19fR4QTbPtCho6Lu",
+      "amount": "250000000", 
+      "index": 1,
+      "description": "Early supporter #2"
+    },
+    {
+      "publicKey": "8aRyik34YsWL2gz2AYnBHoaxju52b3DHvFyMTCpddh4i",
+      "amount": "250000000",
+      "index": 2, 
+      "description": "Early supporter #3"
+    },
+    {
+      "publicKey": "YOUR_RECIPIENT_PUBLIC_KEY_HERE",
+      "amount": "250000000",
+      "index": 3,
+      "description": "Early supporter #4"
     }
-    
-    this.root = currentLevel[0];
-  }
-
-  createLeaf(address, amount) {
-    const data = Buffer.concat([
-      new PublicKey(address).toBuffer(),
-      Buffer.from(new Uint8Array(new BigUint64Array([BigInt(amount)]).buffer)),
-      Buffer.from([0]) // isClaimed = false
-    ]);
-    return new Uint8Array(keccak_256.arrayBuffer(data));
-  }
-
-  hashPair(left, right) {
-    const data = Buffer.concat([Buffer.from(left), Buffer.from(right)]);
-    return new Uint8Array(keccak_256.arrayBuffer(data));
-  }
-
-  getProof(leafIndex) {
-    const proof = [];
-    let index = leafIndex;
-    
-    for (let level = 0; level < this.tree.length - 1; level++) {
-      const currentLevel = this.tree[level];
-      const siblingIndex = index % 2 === 0 ? index + 1 : index - 1;
-      
-      if (siblingIndex < currentLevel.length) {
-        proof.push(currentLevel[siblingIndex]);
-      }
-      
-      index = Math.floor(index / 2);
-    }
-    
-    return proof;
-  }
-}
-
-// Generate the tree
-const merkleTree = new MerkleTree(recipients);
-console.log("Merkle Root:", Buffer.from(merkleTree.root).toString('hex'));
-```
-
-#### Step 3: Initialize Airdrop
-
-```javascript
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
-
-// Set up provider and program
-const provider = anchor.AnchorProvider.env();
-anchor.setProvider(provider);
-const program = new Program(idl, "77DUYUGYFjCWq8JvnNJkwGTpzVvRskiRzA3KqtTAGv2V", provider);
-
-// Calculate total amount
-const totalAmount = recipients.reduce((sum, r) => sum + r.amount, 0);
-
-// Derive airdrop state PDA
-const [airdropState] = PublicKey.findProgramAddressSync(
-  [Buffer.from("merkle_tree")],
-  program.programId
-);
-
-// Initialize the airdrop
-const tx = await program.methods
-  .initializeAirdrop(Array.from(merkleTree.root), new anchor.BN(totalAmount))
-  .accounts({
-    airdrop_state: airdropState,
-    authority: provider.wallet.publicKey,
-    system_program: SystemProgram.programId,
-  })
-  .rpc();
-
-console.log("Airdrop initialized:", tx);
-console.log("Airdrop State PDA:", airdropState.toString());
-```
-
-### Claiming SOL from Airdrop
-
-#### Step 1: Generate Your Proof
-
-```javascript
-// Find your index in the recipients list
-const yourAddress = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
-const recipientIndex = recipients.findIndex(r => r.address === yourAddress);
-
-if (recipientIndex === -1) {
-  throw new Error("Address not found in airdrop");
-}
-
-// Generate proof for your claim
-const proof = merkleTree.getProof(recipientIndex);
-const amount = recipients[recipientIndex].amount;
-
-console.log("Your proof:", proof.map(p => Buffer.from(p).toString('hex')));
-console.log("Amount to claim:", amount / LAMPORTS_PER_SOL, "SOL");
-```
-
-#### Step 2: Submit Claim Transaction
-
-```javascript
-// Derive your claim status PDA
-const [claimStatus] = PublicKey.findProgramAddressSync(
-  [
-    Buffer.from("claim"),
-    airdropState.toBuffer(),
-    provider.wallet.publicKey.toBuffer()
   ],
-  program.programId
-);
-
-// Submit claim
-const claimTx = await program.methods
-  .claimAirdrop(
-    new anchor.BN(amount),
-    proof.map(p => Array.from(p)),
-    new anchor.BN(recipientIndex)
-  )
-  .accounts({
-    airdrop_state: airdropState,
-    user_claim: claimStatus,
-    signer: provider.wallet.publicKey,
-    system_program: SystemProgram.programId,
-  })
-  .rpc();
-
-console.log("Claim successful:", claimTx);
-```
-
-## 🧪 Testing
-
-Run the test suite to verify functionality:
-
-```bash
-# Set environment variables
-export ANCHOR_PROVIDER_URL=https://api.devnet.solana.com
-export ANCHOR_WALLET=~/.config/solana/id.json
-
-# Run tests
-anchor test --skip-local-validator
-```
-
-Or run tests manually:
-
-```bash
-yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts
-```
-
-## 📋 Program Instructions
-
-### `initialize_airdrop`
-
-Initializes a new SOL airdrop with a Merkle root.
-
-**Parameters:**
-- `merkle_root: [u8; 32]` - The 32-byte Merkle root
-- `amount: u64` - Total SOL amount to distribute (in lamports)
-
-**Accounts:**
-- `airdrop_state` - PDA to store airdrop data
-- `authority` - Signer who funds the airdrop
-- `system_program` - Solana System Program
-
-### `claim_airdrop`
-
-Claims SOL from an airdrop using Merkle proof.
-
-**Parameters:**
-- `amount: u64` - Amount to claim (in lamports)
-- `proof: Vec<[u8; 32]>` - Array of Merkle proof hashes
-- `leaf_index: u64` - Index of the leaf in the Merkle tree
-
-**Accounts:**
-- `airdrop_state` - The airdrop state PDA
-- `user_claim` - User's claim receipt PDA (created on claim)
-- `signer` - User claiming the SOL
-- `system_program` - Solana System Program
-
-## 🔍 Account Structure
-
-### `AirdropState`
-
-```rust
-pub struct AirdropState {
-    pub merkle_root: [u8; 32],        // Merkle root of recipients
-    pub authority: Pubkey,            // Airdrop creator
-    pub airdrop_amount: u64,          // Total SOL allocated (lamports)
-    pub amount_claimed: u64,          // Total SOL claimed (lamports)
-    pub bump: u8,                     // PDA bump seed
+  "metadata": {
+    "createdAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0",
+    "algorithm": "keccak256",
+    "leafFormat": "recipient_pubkey(32) + amount(8) + is_claimed(1)"
+  }
 }
 ```
 
-### `ClaimStatus`
+**Important:** 
+- Replace public keys with real Solana addresses
+- Amounts are in **lamports** (1 SOL = 1,000,000,000 lamports)
+- `totalAmount` must equal sum of all recipient amounts
+- Keep `index` values sequential starting from 0
 
-```rust
-pub struct ClaimStatus {} // Empty struct used as receipt flag
-```
+### Step 4: Generate Merkle Tree
 
-## 🔐 PDA Seeds
-
-- **Airdrop State**: `["merkle_tree"]`
-- **Claim Status**: `["claim", airdrop_state_key, user_key]`
-
-## ⚠️ Important Notes
-
-1. **One Airdrop Per Program**: Currently supports one active airdrop at a time
-2. **Irreversible Claims**: Once claimed, SOL cannot be returned to the vault
-3. **Authority Responsibility**: The authority must fund the airdrop during initialization
-4. **Proof Validation**: Invalid proofs will cause transactions to fail
-5. **Devnet Only**: This deployment is for testing on devnet only
-
-## 🔐 Security Best Practices
-
-**⚠️ NEVER commit private keys to Git!**
-
-- All keypair files (`.json` files containing private keys) are gitignored
-- Use environment variables for wallet paths in production
-- The `program-keypair.json` contains the program's upgrade authority - keep it secure
-- For mainnet deployments, use hardware wallets or secure key management systems
-
-**Recommended setup:**
 ```bash
-# Store your keypair in the default Solana location
-solana-keygen new --outfile ~/.config/solana/id.json
-
-# Or use environment variables
-export ANCHOR_WALLET=/path/to/your/secure/keypair.json
+# Generate the merkle tree and update recipients.json
+npx ts-node scripts/generate-merkle-tree.ts
 ```
 
-## 🐛 Common Issues
+**What happens:**
+- Reads your recipients list
+- Creates merkle tree leaves: `hash(publicKey + amount + isClaimedFlag)`
+- Builds complete binary tree using keccak256
+- Updates `recipients.json` with computed merkle root
 
-### "Invalid Merkle proof" Error
-- Ensure your proof was generated correctly for your leaf index
-- Verify the leaf data matches exactly (address + amount + isClaimed=0)
-- Check that you're using the correct recipient index
+**Output:**
+```
+🌳 Generating Merkle tree...
+📋 Loaded 4 recipients
+💰 Total amount: 1 SOL
+✅ Merkle tree generated!
+   Leaves: 4
+   Root: 0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
+✅ Updated recipients.json with merkle root
+```
 
-### "Account already in use" Error
-- You've already claimed from this airdrop
-- Each user can only claim once per airdrop
+### Step 5: Deploy the Program
 
-### Insufficient Funds Error
-- Ensure you have enough SOL for transaction fees
-- The airdrop vault needs to have sufficient SOL for claims
+```bash
+# Generate new program keypair
+solana-keygen new --outfile program-keypair.json --no-bip39-passphrase
 
-## 📚 Additional Resources
+# Get program ID
+PROGRAM_ID=$(solana address -k program-keypair.json)
+echo "Program ID: $PROGRAM_ID"
 
-- [Solana Documentation](https://docs.solana.com/)
-- [Anchor Framework](https://www.anchor-lang.com/)
-- [Merkle Trees Explained](https://en.wikipedia.org/wiki/Merkle_tree)
+# Update program ID in code
+sed -i '' "s/declare_id!(\".*\")/declare_id!(\"$PROGRAM_ID\")/" programs/solana-distributor/src/lib.rs
+
+# Update Anchor.toml  
+sed -i '' "s/solana_distributor = \".*\"/solana_distributor = \"$PROGRAM_ID\"/" Anchor.toml
+
+# Update recipients.json
+sed -i '' "s/\"programId\": \".*\"/\"programId\": \"$PROGRAM_ID\"/" recipients.json
+
+# Copy program keypair to expected location
+cp program-keypair.json target/deploy/solana_distributor-keypair.json
+
+# Update Anchor.toml with your wallet
+sed -i '' 's|wallet = ".*"|wallet = "deploy-wallet.json"|' Anchor.toml
+
+# Build and deploy
+anchor build
+anchor deploy
+```
+
+**Expected output:**
+```
+Deploying cluster: https://api.devnet.solana.com
+Upgrade authority: deploy-wallet.json
+Deploying program "solana_distributor"...
+Program Id: YOUR_PROGRAM_ID
+
+Deploy success
+```
+
+### Step 6: Initialize the Airdrop
+
+```bash
+# Initialize the airdrop with your merkle root
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+ANCHOR_WALLET=deploy-wallet.json \
+npx ts-node scripts/initialize-airdrop.ts
+```
+
+**What happens:**
+- Creates airdrop state account (PDA) with your merkle root
+- Transfers your SOL to fund the airdrop (from `totalAmount`)
+- Makes the airdrop live and ready for claims
+
+**Output:**
+```
+🚀 Initializing airdrop...
+📋 Loaded 4 recipients  
+💰 Total amount: 1 SOL
+🌳 Merkle root: 0x1a2b3c4d...
+📍 Program ID: YOUR_PROGRAM_ID
+👤 Authority: YOUR_WALLET_ADDRESS
+✅ Airdrop initialized successfully!
+📋 Transaction signature: TRANSACTION_ID
+🔍 View on explorer: https://explorer.solana.com/tx/TRANSACTION_ID?cluster=devnet
+```
+
+### Step 7: Generate Proofs for Claims
+
+```bash
+# Generate proof for a specific recipient
+npx ts-node scripts/generate-proof.ts HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG
+
+# Or generate proofs for ALL recipients
+npx ts-node scripts/generate-proof.ts --all
+```
+
+**What happens:**
+- Finds the recipient in your merkle tree
+- Generates the "sibling path" from leaf to root
+- Provides proof that can be verified on-chain
+
+**Output:**
+```
+🔍 Generating proof for HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG...
+✅ Proof generated for Early supporter #1:
+   Leaf Index: 0
+   Amount: 250000000 lamports (0.25 SOL)
+   Proof Length: 2 hashes
+   Proof: [[132, 111, 172, ...], [207, 11, 238, ...]]
+```
+
+### Step 8: Claim the Airdrop
+
+Recipients can now claim their SOL using their private keys:
+
+```bash
+# Claim using recipient's secret key
+npx ts-node scripts/claim-airdrop.ts \
+  HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG \
+  CmRj15BFFh1ECMtYgwzQyYN1AncZvqQRyNHmMD5JqujNMEPaDnJEG5AQvUcDgLjPwbs7dAVLbQ2pPzk3bsWuboS
+```
+
+**What happens:**
+- Loads recipient data and generates proof
+- Creates transaction signed by recipient
+- Program verifies merkle proof on-chain
+- Transfers SOL to recipient if proof is valid
+- Creates "claim receipt" to prevent double-claiming
+
+**Output:**
+```
+🎯 Claiming airdrop for HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG...
+💰 Claiming 0.25 SOL
+📊 Leaf Index: 0
+🔍 Proof Length: 2 hashes
+✅ Recipient hasn't claimed yet, proceeding...
+📤 Sending claim transaction...
+✅ Airdrop claimed successfully!
+📋 Transaction signature: CLAIM_TX_ID
+🔍 View on explorer: https://explorer.solana.com/tx/CLAIM_TX_ID?cluster=devnet
+🎉 Claim completed successfully!
+```
+
+## 🔧 Available Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `generate-merkle-tree.ts` | Create merkle tree from recipients | `npx ts-node scripts/generate-merkle-tree.ts` |
+| `generate-proof.ts` | Generate proofs for claims | `npx ts-node scripts/generate-proof.ts <pubkey>` |
+| `initialize-airdrop.ts` | Initialize on-chain airdrop | `ANCHOR_PROVIDER_URL=... npx ts-node scripts/initialize-airdrop.ts` |
+| `claim-airdrop.ts` | Claim tokens with proof | `npx ts-node scripts/claim-airdrop.ts <pubkey> <secret>` |
+| `extract-private-keys.ts` | Extract keys from test wallets | `npx ts-node scripts/extract-private-keys.ts` |
+
+## 🧪 Testing with Included Test Wallets
+
+The project includes pre-funded test wallets for testing:
+
+```bash
+# Extract test wallet keys (includes 64-byte secret keys)
+npx ts-node scripts/extract-private-keys.ts
+
+# Test claiming with test wallet 1
+npx ts-node scripts/claim-airdrop.ts \
+  HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG \
+  CmRj15BFFh1ECMtYgwzQyYN1AncZvqQRyNHmMD5JqujNMEPaDnJEG5AQvUcDgLjPwbs7dAVLbQ2pPzk3bsWuboS
+```
+
+## 🔍 How Merkle Proofs Work
+
+```
+Merkle Tree Example (4 recipients):
+
+                    ROOT
+                 /        \
+            H(AB)              H(CD)  
+           /    \             /    \
+       H(A)    H(B)       H(C)    H(D)
+        |       |          |       |
+    Alice    Bob      Carol    Dave
+
+To prove Alice is in the tree:
+1. Provide H(B), H(CD) as proof
+2. Program computes: H(H(A) + H(B)) + H(CD) = ROOT  
+3. If computed ROOT matches stored ROOT → Alice is valid ✅
+```
+
+**Benefits:**
+- **Efficient**: Proof size is O(log n), not O(n)
+- **Secure**: Cryptographically impossible to fake
+- **Scalable**: Works for millions of recipients
+
+## 📊 Current Deployment Status
+
+This repository includes a working example:
+
+- **Program ID**: `ErbDoJTnJyG6EBXHeFochTsHJhB3Jfjc3MF1L9aNip3y`
+- **Network**: Devnet  
+- **Recipients**: 4 test wallets (0.075 SOL each)
+- **Status**: ✅ Deployed and initialized
+
+## 🚨 Production Deployment
+
+For mainnet deployment:
+
+```bash
+# 1. Switch to mainnet
+solana config set --url https://api.mainnet-beta.solana.com
+
+# 2. Update Anchor.toml
+[provider]
+cluster = "mainnet"
+
+# 3. Fund wallet with REAL SOL
+solana airdrop 2  # Won't work on mainnet - use real SOL
+
+# 4. Update recipients.json
+"network": "mainnet"
+
+# 5. Deploy (same steps as above)
+anchor deploy
+```
+
+**⚠️ Security Checklist:**
+- [ ] Verify all recipient addresses are correct
+- [ ] Double-check all amounts (in lamports)
+- [ ] Test completely on devnet first
+- [ ] Secure your program upgrade authority
+- [ ] Consider making program immutable after deployment
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Key pair bytes must be of length 64, got 32"**
+```bash
+# Use 64-byte secret key, not 32-byte private key
+npx ts-node scripts/extract-private-keys.ts  # Shows both formats
+```
+
+**"Invalid Merkle proof"**
+```bash
+# Regenerate merkle tree if recipients changed
+npx ts-node scripts/generate-merkle-tree.ts
+```
+
+**"Airdrop already initialized"**
+- Use different program ID, or 
+- Update existing airdrop (if you control authority)
+
+**"Account not found"**
+```bash
+# Make sure program is deployed
+anchor deploy
+
+# Check you're on correct network
+solana config get
+```
+
+## 📁 Project Structure
+
+```
+solana-distributor/
+├── programs/solana-distributor/    # Rust program
+│   └── src/lib.rs                 # Program logic
+├── scripts/                       # TypeScript utilities  
+│   ├── generate-merkle-tree.ts   # Generate tree
+│   ├── generate-proof.ts         # Generate proofs
+│   ├── initialize-airdrop.ts     # Initialize airdrop
+│   ├── claim-airdrop.ts          # Claim tokens
+│   ├── extract-private-keys.ts   # Extract wallet keys
+│   └── load-recipients.ts        # Load recipients
+├── tests/                        # Anchor tests
+├── recipients.json               # Your recipients + merkle root
+└── test-wallets.json            # Test wallets with keys
+```
+
+## 🎓 Learning Resources
+
+- **[Scripts Documentation](scripts/README.md)**: Detailed documentation for all utility scripts
+- **[Anchor Documentation](https://www.anchor-lang.com/)**: Solana development framework
+- **[Solana Cookbook](https://solanacookbook.com/)**: Solana development patterns
+- **[Solana Web3.js Guide](https://docs.solana.com/developing/clients/javascript-reference)**: Client-side development
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Test on devnet thoroughly
+4. Submit pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+[Add your license here]
 
 ---
 
-**⚡ Ready to airdrop SOL efficiently on Solana!** 
+**Built with ❤️ using [Anchor Framework](https://www.anchor-lang.com/)**
+
+Need help? Check the [troubleshooting section](#-troubleshooting) or open an issue! 

@@ -6,5 +6,10 @@ node_modules
 test-ledger
 .yarn
 
-admin-keypair.json
-program-keypair.json
+# Keypairs - keep these private
+*-keypair.json
+*.json.bak
+
+# Test wallets - keep these private
+test-wallet-*.json
+test-wallets.json

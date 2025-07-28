@@ -88,9 +88,9 @@ describe("solana-distributor", () => {
     const tx = await program.methods
       .initializeAirdrop(Array.from(merkleTree.root), new anchor.BN(totalAmount))
       .accounts({
-        airdrop_state: airdropStateKey,
+        airdropState: airdropStateKey,
         authority: authority.publicKey,
-        system_program: SystemProgram.programId,
+        systemProgram: SystemProgram.programId,
       })
       .signers([authority])
       .rpc();
@@ -144,10 +144,10 @@ describe("solana-distributor", () => {
         new anchor.BN(0) // leaf index
       )
       .accounts({
-        airdrop_state: airdropStateKey,
-        user_claim: claimStatusKey,
+        airdropState: airdropStateKey,
+        userClaim: claimStatusKey,
         signer: recipient1.publicKey,
-        system_program: SystemProgram.programId,
+        systemProgram: SystemProgram.programId,
       })
       .signers([recipient1])
       .rpc();
@@ -203,10 +203,10 @@ describe("solana-distributor", () => {
         new anchor.BN(1) // leaf index
       )
       .accounts({
-        airdrop_state: airdropStateKey,
-        user_claim: claimStatusKey,
+        airdropState: airdropStateKey,
+        userClaim: claimStatusKey,
         signer: recipient2.publicKey,
-        system_program: SystemProgram.programId,
+        systemProgram: SystemProgram.programId,
       })
       .signers([recipient2])
       .rpc();
@@ -251,10 +251,10 @@ describe("solana-distributor", () => {
           new anchor.BN(0)
         )
         .accounts({
-          airdrop_state: airdropStateKey,
-          user_claim: claimStatusKey,
+          airdropState: airdropStateKey,
+          userClaim: claimStatusKey,
           signer: recipient1.publicKey,
-          system_program: SystemProgram.programId,
+          systemProgram: SystemProgram.programId,
         })
         .signers([recipient1])
         .rpc();
