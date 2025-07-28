@@ -24,13 +24,13 @@ This is a **merkle tree-based airdrop system** that allows you to:
 │ • Bob: 0.2 SOL  │    │ Root: 0x1a2b3c...│    │ Root: 0x1a2b3c..│
 │ • Carol: 0.1 SOL│    │                  │    │ SOL: 0.4 Total  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
-                                                         │
+                                                        │
 ┌─────────────────┐    ┌──────────────────┐             │
 │   Alice Claims  │    │  Generate Proof  │             │
 │                 │◀───│  for Alice       │◀────────────┘
 │ ✓ Proof Valid   │    │                  │
 │ ✓ Receives SOL  │    │ Proof: [0x4d,    │
-│                 │    │        0x9f, ...] │
+│                 │    │        0x9f, ...]│
 └─────────────────┘    └──────────────────┘
 ```
 
@@ -438,7 +438,5 @@ solana-distributor/
 [Add your license here]
 
 ---
-
-**Built with ❤️ using [Anchor Framework](https://www.anchor-lang.com/)**
 
 Need help? Check the [troubleshooting section](#-troubleshooting) or open an issue! 
