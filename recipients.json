@@ -1,38 +1,38 @@
 {
-  "airdropId": "solana-distributor-airdrop-2024",
-  "description": "Sample airdrop for testing purposes",
-  "merkleRoot": "0x76fa4794dd39f41fa5a231ade7440c1e1caf466688aa2c89ec085ae39857a756",
+  "airdropId": "solana-distributor-airdrop-2025",
+  "description": "Deployment setup airdrop for testing purposes",
+  "merkleRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "totalAmount": "300000000",
   "network": "devnet",
-  "programId": "ErbDoJTnJyG6EBXHeFochTsHJhB3Jfjc3MF1L9aNip3y",
+  "programId": "WILL_BE_UPDATED_AFTER_DEPLOYMENT",
   "recipients": [
     {
-      "publicKey": "Hb6dzd4pYxmFYKkJDWuhzBEUkkaE93sFcvXYtriTkmw9",
+      "publicKey": "11111111111111111111111111111111",
       "amount": "75000000",
       "index": 0,
-      "description": "Original test recipient"
+      "description": "Placeholder wallet 1 - Will be replaced during setup"
     },
     {
-      "publicKey": "HcCcKydEcuGMbBso7jciQrFpBw1XQrKHKFckGSAxXXQG",
+      "publicKey": "11111111111111111111111111111112",
       "amount": "75000000",
       "index": 1,
-      "description": "Test wallet 1 - Funded with 2 SOL"
+      "description": "Placeholder wallet 2 - Will be replaced during setup"
     },
     {
-      "publicKey": "H3LgCdztZyfE5zch3YAVXYj5D7bf19fR4QTbPtCho6Lu",
+      "publicKey": "11111111111111111111111111111113",
       "amount": "75000000",
       "index": 2,
-      "description": "Test wallet 2 - Funded with 2 SOL"
+      "description": "Placeholder wallet 3 - Will be replaced during setup"
     },
     {
-      "publicKey": "8aRyik34YsWL2gz2AYnBHoaxju52b3DHvFyMTCpddh4i",
+      "publicKey": "11111111111111111111111111111114",
       "amount": "75000000",
       "index": 3,
-      "description": "Test wallet 3 - Unfunded (rate limited)"
+      "description": "Placeholder wallet 4 - Will be replaced during setup"
     }
   ],
   "metadata": {
-    "createdAt": "2024-01-01T00:00:00Z",
+    "createdAt": "2025-01-01T00:00:00Z",
     "version": "1.0.0",
     "algorithm": "keccak256",
     "leafFormat": "recipient_pubkey(32) + amount(8) + is_claimed(1)"

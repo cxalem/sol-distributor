@@ -51,7 +51,191 @@ anchor --version   # Should be 0.31.1
 node --version     # Should be 16+
 ```
 
-## 🚀 Step-by-Step Setup
+## 🚀 Quick Setup Options
+
+### Option 1: Automated Setup (Recommended) ⚡
+
+Use our interactive deployment script to set everything up automatically:
+
+```bash
+# Clone and install
+git clone <your-repo-url>
+cd solana-distributor
+npm install
+
+# Run the interactive setup script
+npm run deploy-setup
+```
+
+#### 🎯 What This Script Does Automatically
+
+- ✅ **Interactive wallet setup** (use existing or create new)
+- ✅ **Automatic devnet SOL funding** via airdrops
+- ✅ **Multiple test wallet creation** with funding
+- ✅ **Real merkle tree generation** (no more placeholder values!)
+- ✅ **Program compilation and deployment** with smart program ID handling
+- ✅ **Configuration file generation** (`Anchor.toml`, `recipients.json`, `test-wallets.json`)
+- ✅ **Comprehensive error handling** and user guidance
+- ✅ **Complete end-to-end deployment** in one script
+
+#### 📋 Interactive Session Example
+
+```
+🎉 Welcome to Solana Distributor Deployment Setup!
+
+This script will help you:
+1. Set up your deployment wallet
+2. Create test wallets for examples
+3. Deploy the Solana program
+4. Generate configuration files
+
+==================================================
+
+🚀 Setting up deployment wallet...
+
+Do you want to:
+1. Use an existing wallet (provide private key)
+2. Create a new wallet
+Enter choice (1 or 2): 2
+
+✅ Generated new deployment wallet: 7xKzL8...
+💾 Saved wallet file: deploy-wallet.json
+💰 Current balance: 0 SOL
+💧 Requesting 2 SOL airdrop for 7xKzL8...
+✅ Airdrop successful! Signature: 3mK9bP...
+✅ Wallet funded! New balance: 2 SOL
+
+🧪 Setting up test wallets...
+
+How many test wallets do you want to create? (default: 3): 3
+
+📱 Creating test wallet 1...
+✅ Created: 9pLmN2...
+💧 Requesting 1 SOL airdrop for 9pLmN2...
+✅ Airdrop successful! Signature: 4nQ7rT...
+💰 Funded with 1 SOL
+⏳ Waiting 3 seconds before next wallet...
+
+...
+
+📝 Updating configuration files...
+✅ Updated Anchor.toml to use deploy-wallet.json
+💾 Saved test-wallets.json
+📋 Generated recipients.json
+
+🌳 Generating merkle tree and updating recipients...
+🌳 Generating Merkle tree...
+✅ Merkle tree generated!
+   Leaves: 3
+   Root: 0xf6f98d0955d4009b21da5376e02972d83a21b4ae7aa352ca270a69df5ed95000
+✅ Updated recipients.json with merkle root
+
+Do you want to deploy the program now? (y/n): y
+
+🚀 Deploying Solana program...
+
+Do you want to deploy with a new program ID? (y/n): y
+🆔 Generating new program ID...
+✅ Generated new program ID: 2SJSD8SwrGJRqkDUfcbmkuibEMygjiVm68fLyonUvXma
+📝 Updating program references...
+   ✅ Updated programs/solana-distributor/src/lib.rs
+   ✅ Updated Anchor.toml
+   ✅ Updated recipients.json
+✅ All program references updated!
+📋 Program keypair copied to target/deploy/
+
+🔨 Building program...
+📡 Deploying program...
+✅ Program deployed successfully!
+
+==================================================
+✅ Setup completed successfully!
+
+📁 Files created:
+   - deploy-wallet.json (only deploy wallet needs individual file)
+   - test-wallets.json (contains all wallet data)
+   - recipients.json (updated with real merkle root)
+   - Anchor.toml (updated)
+
+🎉 Program deployment completed successfully!
+📋 To initialize the airdrop later, run: npx ts-node scripts/initialize-airdrop.ts
+
+🚀 Next steps:
+1. ✅ Merkle tree generated and recipients.json updated
+2. ✅ Program deployed successfully
+3. Initialize airdrop: npx ts-node scripts/initialize-airdrop.ts
+4. Test claiming: npx ts-node scripts/claim-airdrop.ts <pubkey> <secretkey>
+
+💡 Wallet information saved in test-wallets.json
+   Use 'npx ts-node scripts/extract-private-keys.ts' to view keys
+```
+
+#### 📁 Files Created by Automated Setup
+
+**Individual Wallet Files:**
+- `deploy-wallet.json` - Your deployment wallet keypair (needed by Anchor)
+- No individual test wallet files - all data stored in `test-wallets.json`
+
+**Configuration Files:**
+- `test-wallets.json` - Comprehensive wallet metadata including:
+  - Public keys and private keys (multiple formats)
+  - Balance information and funding status
+  - Usage instructions
+- `recipients.json` - Airdrop configuration with:
+  - List of recipients (your test wallets)
+  - Airdrop amounts (0.075 SOL each by default)
+  - Real merkle root (no placeholders)
+  - Metadata and program ID
+- `Anchor.toml` - Updated with your deployment wallet
+
+#### 🔐 Private Key Formats Supported
+
+The script handles private keys in multiple formats:
+
+- **Base58** (88 characters): Standard Solana format
+- **Hex** (128 characters): Hexadecimal representation of 64-byte secret key
+
+Example:
+```bash
+# Base58 format (preferred)
+CmRj15BFFh1ECMtYgwzQyYN1AncZvqQRyNHmMD5JqujNMEPaDnJEG5AQvUcDgLjPwbs7dAVLbQ2pPzk3bsWuboS
+
+# Hex format
+0a2582bd651140fbda3f35678e5bf95860b5e77a36ac9954b75b63e44486c03cf6bf72116c21968c29139a2d6c75c86769ad8e4d883329cd32807812e9122bfd
+```
+
+#### 💾 Wallet File Management
+
+**Centralized Storage:**
+All wallet data is stored in `test-wallets.json` to eliminate redundancy:
+- Only `deploy-wallet.json` is created (required by Anchor)
+- Test wallets exist only in the centralized file
+- Use `npm run extract-wallet` when individual files are needed
+
+**Extract Individual Wallets:**
+```bash
+# List all available wallets
+npm run extract-wallet -- --list
+
+# Extract a specific wallet
+npm run extract-wallet test-wallet-1
+
+# Extract all wallets to individual files
+npm run extract-wallet -- --all
+```
+
+⚠️ **Security Notes:**
+- This script is for **devnet development only**
+- Never use generated wallets on mainnet
+- Private keys are stored in plain text files
+- Add wallet files to `.gitignore` to avoid committing them
+- For production, use hardware wallets or secure key management
+
+---
+
+### Option 2: Manual Step-by-Step Setup
+
+If you prefer manual control or want to understand each step:
 
 ### Step 1: Clone and Install
 
@@ -290,6 +474,8 @@ npx ts-node scripts/claim-airdrop.ts \
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
+| **`deploy-setup.ts`** | **🆕 Interactive deployment & wallet setup** | **`npm run deploy-setup`** |
+| **`extract-wallet.ts`** | **🆕 Extract wallet files from centralized storage** | **`npm run extract-wallet`** |
 | `generate-merkle-tree.ts` | Create merkle tree from recipients | `npx ts-node scripts/generate-merkle-tree.ts` |
 | `generate-proof.ts` | Generate proofs for claims | `npx ts-node scripts/generate-proof.ts <pubkey>` |
 | `initialize-airdrop.ts` | Initialize on-chain airdrop | `ANCHOR_PROVIDER_URL=... npx ts-node scripts/initialize-airdrop.ts` |
@@ -376,6 +562,25 @@ anchor deploy
 
 ### Common Issues
 
+**"Rate limit exceeded" during airdrops**
+- The deploy script automatically handles rate limiting with delays
+- Some wallets may not get funded automatically
+- You can fund them manually later:
+  ```bash
+  solana airdrop 1 <wallet-address> --url devnet
+  ```
+
+**"Deployment failed" in automated setup**
+- The script automatically checks and attempts to fund your deployment wallet
+- Ensures target/deploy directory exists before copying keypairs
+- If automatic funding fails, it provides manual funding instructions
+- Check that you have `anchor` CLI installed: `anchor --version`
+- For persistent issues, try manual deployment: `anchor build && anchor deploy`
+
+**"Invalid private key format"**
+- Ensure your private key is exactly 88 characters (Base58) or 128 characters (hex)
+- Don't include extra spaces or characters
+
 **"Key pair bytes must be of length 64, got 32"**
 ```bash
 # Use 64-byte secret key, not 32-byte private key
@@ -416,6 +621,26 @@ solana balance -k deploy-wallet.json --url devnet
 anchor deploy
 ```
 *This error occurs when the wallet file specified in `Anchor.toml` doesn't exist. The `deploy-wallet.json` file is needed to sign deployment transactions.*
+
+**Manual Steps After Automated Setup (if needed)**
+
+If deployment fails or you skip it:
+
+```bash
+# Build and deploy manually
+anchor build
+anchor deploy
+
+# Generate merkle tree
+npx ts-node scripts/generate-merkle-tree.ts
+
+# Initialize airdrop
+npx ts-node scripts/initialize-airdrop.ts
+
+# Test claiming
+npx ts-node scripts/extract-private-keys.ts  # Get private keys
+npx ts-node scripts/claim-airdrop.ts <pubkey> <secret-key>
+```
 
 ## 📁 Project Structure
 
